@@ -1,0 +1,11 @@
+let
+    Source = Excel.CurrentWorkbook(){[Name="NOAA_DATA"]}[Content],
+    #"Merged Queries" = Table.NestedJoin(Source, {"StationID"}, dboWeatherStation, {"NOAA_Code"}, "dboWeatherStation", JoinKind.LeftOuter),
+    #"Expanded dboWeatherStation" = Table.ExpandTableColumn(#"Merged Queries", "dboWeatherStation", {"WBAN_Code", "Airport_Code", "Station_Name"}, {"WBAN_Code", "Airport_Code", "Station_Name"}),
+    #"Unpivoted Columns" = Table.UnpivotOtherColumns(#"Expanded dboWeatherStation", {"WBAN_Code", "Airport_Code", "Station_Name", "StationID", "Date", "Year", "Month", "Day"}, "Attribute", "Value"),
+    #"Removed Columns" = Table.RemoveColumns(#"Unpivoted Columns",{"Date"}),
+    #"Merged Columns" = Table.CombineColumns(Table.TransformColumnTypes(#"Removed Columns", {{"Day", type text}}, "en-US"),{"Day", "Attribute"},Combiner.CombineTextByDelimiter("", QuoteStyle.None),"Day_Attribute"),
+    #"Pivoted Column" = Table.Pivot(#"Merged Columns", List.Distinct(#"Merged Columns"[Day_Attribute]), "Day_Attribute", "Value", List.Max),
+    #"Removed Month Year StationID Columns" = Table.RemoveColumns(#"Pivoted Column",{"Year", "Month", "StationID"})
+in
+    #"Removed Month Year StationID Columns"
